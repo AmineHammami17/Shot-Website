@@ -1,0 +1,650 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingBag,
+  MessageSquare,
+  Star,
+  Users,
+  Menu,
+  X,
+  Trash2,
+  Pencil,
+  Plus,
+  RefreshCw,
+} from 'lucide-react';
+import { apiRequest } from '../services/apiClient';
+import { getCategories } from '../services/categoryService';
+
+const AdminDashboard = () => {
+  const { t } = useTranslation();
+
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const [stats, setStats] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [users, setUsers] = useState([]);
+
+  const [productForm, setProductForm] = useState({
+    id: null,
+    name: '',
+    description: '',
+    price: '',
+    category: '',
+    stockQuantity: '',
+    images: [],
+  });
+
+  const menuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'categories', label: 'Categories', icon: Package },
+    { id: 'orders', label: 'Orders', icon: ShoppingBag },
+    { id: 'reviews', label: 'Reviews', icon: Star },
+    { id: 'messages', label: 'Messages', icon: MessageSquare },
+    { id: 'users', label: 'Users', icon: Users },
+  ];
+  // Category form state
+  const [categoryForm, setCategoryForm] = useState({ id: null, name: '', description: '' });
+  const [isCategoryBusy, setIsCategoryBusy] = useState(false);
+  const [categoryError, setCategoryError] = useState('');
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    setIsCategoryBusy(true);
+    setCategoryError('');
+    try {
+      if (categoryForm.id) {
+        await apiRequest(`/categories/${categoryForm.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: categoryForm.name, description: categoryForm.description }),
+        });
+      } else {
+        await apiRequest('/categories', {
+          method: 'POST',
+          body: JSON.stringify({ name: categoryForm.name, description: categoryForm.description }),
+        });
+      }
+      setCategoryForm({ id: null, name: '', description: '' });
+      setCategories(await getCategories());
+    } catch (e) {
+      setCategoryError(e.message || 'Save failed');
+    } finally {
+      setIsCategoryBusy(false);
+    }
+  };
+
+  const handleEditCategory = (cat) => {
+    setCategoryForm({ id: cat._id, name: cat.name, description: cat.description || '' });
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Delete category?')) return;
+    setIsCategoryBusy(true);
+    setCategoryError('');
+    try {
+      await apiRequest(`/categories/${id}`, { method: 'DELETE' });
+      setCategories(await getCategories());
+    } catch (e) {
+      setCategoryError(e.message || 'Delete failed');
+    } finally {
+      setIsCategoryBusy(false);
+    }
+  };
+
+  const loadDashboard = async () => {
+    const res = await apiRequest('/admin/stats');
+    setStats(res.data);
+  };
+
+  const loadProducts = async () => {
+    const res = await apiRequest('/products');
+    setProducts(res.data || []);
+    setCategories(await getCategories());
+  };
+
+  const loadOrders = async () => {
+    const res = await apiRequest('/orders/admin/all');
+    setOrders(res.data || []);
+  };
+
+  const loadReviews = async () => {
+    const res = await apiRequest('/admin/reviews');
+    setReviews(res.data || []);
+  };
+
+  const loadMessages = async () => {
+    const res = await apiRequest('/admin/messages');
+    setMessages(res.data || []);
+  };
+
+  const loadUsers = async () => {
+    const res = await apiRequest('/admin/users');
+    setUsers(res.data || []);
+  };
+
+  const refreshActiveTab = async () => {
+    setIsBusy(true);
+    setError('');
+    try {
+      if (activeTab === 'dashboard') await loadDashboard();
+      if (activeTab === 'products') await loadProducts();
+      if (activeTab === 'orders') await loadOrders();
+      if (activeTab === 'reviews') await loadReviews();
+      if (activeTab === 'messages') await loadMessages();
+      if (activeTab === 'users') await loadUsers();
+    } catch (e) {
+      setError(e.message || 'Failed to load');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshActiveTab();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const revenueValue = useMemo(() => {
+    const val = stats?.totalRevenue?.[0]?.total || 0;
+    return Number(val).toFixed(3) + ' DT';
+  }, [stats]);
+
+  const handleSaveProduct = async (e) => {
+    e.preventDefault();
+    setIsBusy(true);
+    setError('');
+    try {
+      const form = new FormData();
+      form.append('name', productForm.name);
+      form.append('description', productForm.description);
+      form.append('price', productForm.price);
+      form.append('category', productForm.category);
+      form.append('stockQuantity', productForm.stockQuantity || '0');
+      (productForm.images || []).forEach((file) => form.append('productImages', file));
+
+      if (productForm.id) {
+        await apiRequest(`/products/${productForm.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: productForm.name,
+            description: productForm.description,
+            price: Number(productForm.price),
+            category: productForm.category,
+            stockQuantity: Number(productForm.stockQuantity || 0),
+          }),
+        });
+      } else {
+        await apiRequest('/products', { method: 'POST', body: form });
+      }
+
+      setProductForm({ id: null, name: '', description: '', price: '', category: '', stockQuantity: '', images: [] });
+      await loadProducts();
+    } catch (e2) {
+      setError(e2.message || 'Save failed');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleEditProduct = (p) => {
+    setProductForm({
+      id: p._id,
+      name: p.name || '',
+      description: p.description || '',
+      price: String(p.price ?? ''),
+      category: p.category?._id || '',
+      stockQuantity: String(p.stockQuantity ?? ''),
+      images: [],
+    });
+  };
+
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm('Delete product?')) return;
+    setIsBusy(true);
+    setError('');
+    try {
+      await apiRequest(`/products/${id}`, { method: 'DELETE' });
+      await loadProducts();
+    } catch (e) {
+      setError(e.message || 'Delete failed');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, statut) => {
+    setIsBusy(true);
+    setError('');
+    try {
+      await apiRequest(`/orders/status/${orderId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ statut }),
+      });
+      await loadOrders();
+    } catch (e) {
+      setError(e.message || 'Status update failed');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Delete review?')) return;
+    setIsBusy(true);
+    setError('');
+    try {
+      await apiRequest(`/admin/reviews/${reviewId}`, { method: 'DELETE' });
+      await loadReviews();
+    } catch (e) {
+      setError(e.message || 'Delete failed');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleMarkMessageRead = async (messageId) => {
+    setIsBusy(true);
+    setError('');
+    try {
+      await apiRequest(`/admin/messages/${messageId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ statut: 'lu' }),
+      });
+      await loadMessages();
+    } catch (e) {
+      setError(e.message || 'Update failed');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handlePromoteUser = async (userId, role) => {
+    setIsBusy(true);
+    setError('');
+    try {
+      await apiRequest(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role }),
+      });
+      await loadUsers();
+    } catch (e) {
+      setError(e.message || 'Role update failed');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen w-full font-['Montserrat'] bg-[#f8fafc]">
+      <div className="flex min-h-screen">
+        <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} bg-white shadow-xl transition-all duration-300 flex flex-col sticky top-0 h-screen rounded-tr-2xl rounded-br-2xl border-r border-[#e6f4f1]`}>
+          <div className="p-6 flex items-center justify-between border-b border-[#e6f4f1]">
+            {isSidebarOpen ? (
+              <div className="flex items-center gap-2">
+                <img src="/images/logo_SHOT.png" alt="S.HOT" className="h-7 w-auto object-contain" />
+              </div>
+            ) : (
+              <div className="w-full flex justify-center">
+                <div className="w-10 h-10 bg-[#129384] rounded-2xl flex items-center justify-center">
+                  <span className="text-white font-black text-lg">S</span>
+                </div>
+              </div>
+            )}
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-[#e6f4f1] rounded-lg transition-colors">
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+
+          <nav className="flex-1 p-4 space-y-2 mt-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold text-sm transition-all
+                    ${activeTab === item.id ? 'bg-[#129384] text-white shadow-md' : 'text-[#129384] hover:bg-[#e6f4f1]'}
+                    ${!isSidebarOpen ? 'justify-center' : ''}`}
+                >
+                  <Icon size={20} strokeWidth={2.5} />
+                  {isSidebarOpen && <span>{item.label}</span>}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <main className="flex-1 p-6 md:p-10 text-[#129384] bg-[#f8fafc] rounded-2xl">
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black text-[#129384]">Admin</h1>
+              <p className="text-[#129384]/70 text-sm mt-1">Manage products, orders, reviews, and inbox.</p>
+            </div>
+            <button
+              onClick={refreshActiveTab}
+              className="bg-[#e6f4f1] hover:bg-[#c6f2e9] border border-[#129384]/10 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 text-[#129384] shadow-sm"
+            >
+              <RefreshCw size={16} /> Refresh
+            </button>
+          </div>
+
+          {error && (
+            <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-2xl mb-6">
+              {error}
+            </div>
+          )}
+
+          {activeTab === 'dashboard' && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card title="Revenue" value={revenueValue} />
+              <Card title="Orders" value={String(stats?.ordersCount ?? 0)} />
+              <Card title="Products" value={String(stats?.productsCount ?? 0)} />
+              <Card title="Users" value={String(stats?.usersCount ?? 0)} />
+            </div>
+          )}
+
+          {activeTab === 'categories' && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <section className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-black text-lg flex items-center gap-2"><Package size={18} /> Categories</h2>
+                </div>
+                <div className="overflow-auto">
+                  <table className="w-full text-sm text-black">
+                    <thead className="text-[#129384]/70">
+                      <tr className="border-b border-[#129384]/10">
+                        <th className="py-2 text-left">Name</th>
+                        <th className="py-2 text-left">Description</th>
+                        <th className="py-2 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categories.map((c) => (
+                        <tr key={c._id} className="border-b border-[#129384]/5">
+                          <td className="py-3 font-bold">{c.name}</td>
+                          <td className="py-3">{c.description || '—'}</td>
+                          <td className="py-3 text-right">
+                            <div className="inline-flex gap-2">
+                              <button onClick={() => handleEditCategory(c)} className="px-3 py-2 rounded-xl bg-[#F0FFF4] hover:bg-[#e6f4f1] border border-[#129384]/10 text-[#129384]">Edit</button>
+                              <button onClick={() => handleDeleteCategory(c._id)} className="px-3 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/20 border border-red-500/30 text-red-700">Delete</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+                <h2 className="font-black text-lg flex items-center gap-2 mb-4"><Plus size={18} /> {categoryForm.id ? 'Edit category' : 'Add category'}</h2>
+                <form onSubmit={handleSaveCategory} className="space-y-3">
+                  <input className="w-full bg-[#F0FFF4] border border-[#1B4332]/10 rounded-2xl px-4 py-3 text-black" placeholder="Name" value={categoryForm.name} onChange={(e) => setCategoryForm((s) => ({ ...s, name: e.target.value }))} />
+                  <textarea className="w-full bg-[#F0FFF4] border border-[#1B4332]/10 rounded-2xl px-4 py-3 text-black" placeholder="Description" value={categoryForm.description} onChange={(e) => setCategoryForm((s) => ({ ...s, description: e.target.value }))} />
+                  <button disabled={isCategoryBusy} className="w-full bg-[#129384] hover:bg-[#238d7b] rounded-2xl py-3 font-black text-white">
+                    {isCategoryBusy ? 'Saving...' : 'Save'}
+                  </button>
+                  {categoryError && <div className="text-red-600 text-sm mt-2">{categoryError}</div>}
+                </form>
+              </section>
+            </div>
+          )}
+
+          {activeTab === 'products' && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <section className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-black text-lg flex items-center gap-2"><Package size={18} /> Products</h2>
+                </div>
+                <div className="overflow-auto">
+                  <table className="w-full text-sm text-black">
+                    <thead className="text-[#129384]/80 bg-[#e6f4f1]">
+                      <tr className="border-b border-[#129384]/20">
+                        <th className="py-2 px-2 text-left font-semibold">Product</th>
+                        <th className="py-2 px-2 text-left font-semibold">Price</th>
+                        <th className="py-2 px-2 text-left font-semibold">Stock</th>
+                        <th className="py-2 px-2 text-right font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map((p) => {
+                        const img = p.images?.[0]?.url || '/images/p1.png';
+                        return (
+                          <tr key={p._id} className="border-b border-[#e6f4f1] hover:bg-[#f8fafc] transition-colors">
+                            <td className="py-3 px-2">
+                              <div className="flex items-center gap-3">
+                                <img src={img} alt={p.name} className="w-10 h-10 rounded-xl object-cover bg-[#F0FFF4]" />
+                                <div>
+                                  <div className="font-bold text-[#129384]">{p.name}</div>
+                                  <div className="text-[#129384]/60 text-xs">{p.category?.name || '—'}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-2">{Number(p.price || 0).toFixed(3)} DT</td>
+                            <td className="py-3 px-2">{p.stockQuantity ?? 0}</td>
+                            <td className="py-3 px-2 text-right">
+                              <div className="inline-flex gap-2">
+                                <button onClick={() => handleEditProduct(p)} className="px-3 py-2 rounded-xl bg-[#e6f4f1] hover:bg-[#c6f2e9] border border-[#129384]/10 text-[#129384]"><Pencil size={16} /></button>
+                                <button onClick={() => handleDeleteProduct(p._id)} className="px-3 py-2 rounded-xl bg-red-100 hover:bg-red-200 border border-red-300 text-red-700"><Trash2 size={16} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+                <h2 className="font-black text-lg flex items-center gap-2 mb-4"><Plus size={18} /> {productForm.id ? 'Edit product' : 'Add product'}</h2>
+                <form onSubmit={handleSaveProduct} className="space-y-3">
+                  <input className="w-full bg-[#F0FFF4] border border-[#1B4332]/10 rounded-2xl px-4 py-3 text-black" placeholder="Name" value={productForm.name} onChange={(e) => setProductForm((s) => ({ ...s, name: e.target.value }))} />
+                  <textarea className="w-full bg-[#F0FFF4] border border-[#1B4332]/10 rounded-2xl px-4 py-3 text-black" placeholder="Description" value={productForm.description} onChange={(e) => setProductForm((s) => ({ ...s, description: e.target.value }))} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input className="w-full bg-[#F0FFF4] border border-[#1B4332]/10 rounded-2xl px-4 py-3" placeholder="Price" value={productForm.price} onChange={(e) => setProductForm((s) => ({ ...s, price: e.target.value }))} />
+                    <input className="w-full bg-[#F0FFF4] border border-[#1B4332]/10 rounded-2xl px-4 py-3" placeholder="Stock" value={productForm.stockQuantity} onChange={(e) => setProductForm((s) => ({ ...s, stockQuantity: e.target.value }))} />
+                  </div>
+                  <select className="w-full bg-[#F0FFF4] border border-[#1B4332]/10 rounded-2xl px-4 py-3" value={productForm.category} onChange={(e) => setProductForm((s) => ({ ...s, category: e.target.value }))}>
+                    <option value="">Select category</option>
+                    {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+                  </select>
+
+                  {!productForm.id && (
+                    <input
+                      type="file"
+                      multiple
+                      onChange={(e) => setProductForm((s) => ({ ...s, images: Array.from(e.target.files || []) }))}
+                      className="w-full bg-[#F0FFF4] border border-[#1B4332]/10 rounded-2xl px-4 py-3"
+                    />
+                  )}
+
+                  <button disabled={isBusy} className="w-full bg-[#238d7b] hover:bg-[#1f7a6a] rounded-2xl py-3 font-black">
+                    {isBusy ? 'Saving...' : 'Save'}
+                  </button>
+                </form>
+              </section>
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <section className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+              <h2 className="font-black text-lg flex items-center gap-2 mb-4"><ShoppingBag size={18} /> Orders</h2>
+              <div className="overflow-auto">
+                <table className="w-full text-sm text-black">
+                  <thead className="text-[#1B4332]/70">
+                    <tr className="border-b border-[#1B4332]/10">
+                      <th className="py-2 text-left">Order</th>
+                      <th className="py-2 text-left">Customer</th>
+                      <th className="py-2 text-left">Total</th>
+                      <th className="py-2 text-left">Status</th>
+                      <th className="py-2 text-left">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((o) => (
+                      <tr key={o._id} className="border-b border-[#1B4332]/5">
+                        <td className="py-3 font-bold">#{String(o._id).slice(-8).toUpperCase()}</td>
+                        <td className="py-3">{o.user?.email || o.user?.username || '—'}</td>
+                        <td className="py-3">{Number(o.total || 0).toFixed(3)} DT</td>
+                        <td className="py-3">
+                          <select
+                            className="bg-[#F0FFF4] border border-[#1B4332]/10 rounded-xl px-3 py-2"
+                            value={o.statut}
+                            onChange={(e) => handleUpdateOrderStatus(o._id, e.target.value)}
+                          >
+                            {['pending', 'confirmed', 'cash', 'delivered', 'cancelled'].map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-3 text-[#1B4332]/70">{new Date(o.dateCommande).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[#1B4332]/60 text-xs mt-3">Changing status triggers an email notification (best effort).</p>
+            </section>
+          )}
+
+          {activeTab === 'reviews' && (
+            <section className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+              <h2 className="font-black text-lg flex items-center gap-2 mb-4"><Star size={18} /> Reviews</h2>
+              <div className="overflow-auto">
+                <table className="w-full text-sm text-black">
+                  <thead className="text-[#1B4332]/70">
+                    <tr className="border-b border-[#1B4332]/10">
+                      <th className="py-2 text-left">Product</th>
+                      <th className="py-2 text-left">User</th>
+                      <th className="py-2 text-left">Rating</th>
+                      <th className="py-2 text-left">Comment</th>
+                      <th className="py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reviews.map((r) => (
+                      <tr key={r._id} className="border-b border-[#1B4332]/5">
+                        <td className="py-3 font-bold">{r.product?.name || '—'}</td>
+                        <td className="py-3">{r.user?.email || '—'}</td>
+                        <td className="py-3">{r.rating} / 5</td>
+                        <td className="py-3 text-[#1B4332]/80">{r.comment}</td>
+                        <td className="py-3 text-right">
+                          <button onClick={() => handleDeleteReview(r._id)} className="px-3 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/20 border border-red-500/30">
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[#1B4332]/60 text-xs mt-3">Note: model uses `estVisible` (no pending approval status).</p>
+            </section>
+          )}
+
+          {activeTab === 'messages' && (
+            <section className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+              <h2 className="font-black text-lg flex items-center gap-2 mb-4"><MessageSquare size={18} /> Messages</h2>
+              <div className="overflow-auto">
+                <table className="w-full text-sm text-black">
+                  <thead className="text-[#1B4332]/70">
+                    <tr className="border-b border-[#1B4332]/10">
+                      <th className="py-2 text-left">From</th>
+                      <th className="py-2 text-left">Subject</th>
+                      <th className="py-2 text-left">Status</th>
+                      <th className="py-2 text-left">Date</th>
+                      <th className="py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {messages.map((m) => (
+                      <tr key={m._id} className="border-b border-[#1B4332]/5">
+                        <td className="py-3">
+                          <div className="font-bold">{m.nom}</div>
+                          <div className="text-[#1B4332]/60 text-xs">{m.email}</div>
+                        </td>
+                        <td className="py-3">
+                          <div className="font-bold">{m.sujet}</div>
+                          <div className="text-[#1B4332]/70 text-xs line-clamp-1">{m.message}</div>
+                        </td>
+                        <td className="py-3">{m.statut}</td>
+                        <td className="py-3 text-[#1B4332]/70">{new Date(m.dateEnvoi).toLocaleString()}</td>
+                        <td className="py-3 text-right">
+                          <button onClick={() => handleMarkMessageRead(m._id)} className="px-3 py-2 rounded-xl bg-[#F0FFF4] hover:bg-[#e2f5e8] border border-[#1B4332]/10">
+                            Mark read
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'users' && (
+            <section className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+              <h2 className="font-black text-lg flex items-center gap-2 mb-4"><Users size={18} /> Users</h2>
+              <div className="overflow-auto">
+                <table className="w-full text-sm text-black">
+                  <thead className="text-[#1B4332]/70">
+                    <tr className="border-b border-[#1B4332]/10">
+                      <th className="py-2 text-left">Username</th>
+                      <th className="py-2 text-left">Email</th>
+                      <th className="py-2 text-left">Role</th>
+                      <th className="py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u._id} className="border-b border-[#1B4332]/5">
+                        <td className="py-3 font-bold">{u.username}</td>
+                        <td className="py-3">{u.email}</td>
+                        <td className="py-3">{u.role}</td>
+                        <td className="py-3 text-right">
+                          <div className="inline-flex gap-2">
+                            <button onClick={() => handlePromoteUser(u._id, 'admin')} className="px-3 py-2 rounded-xl bg-[#F0FFF4] hover:bg-[#e2f5e8] border border-[#1B4332]/10">
+                              Make admin
+                            </button>
+                            <button onClick={() => handlePromoteUser(u._id, 'user')} className="px-3 py-2 rounded-xl bg-[#F0FFF4] hover:bg-[#e2f5e8] border border-[#1B4332]/10">
+                              Make user
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {isBusy && (
+            <div className="fixed bottom-6 right-6 bg-white text-black px-4 py-2 rounded-full font-bold shadow-xl">
+              Working...
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+const Card = ({ title, value }) => (
+  <div className="bg-white shadow-sm border border-[#1B4332]/10 rounded-3xl p-6">
+    <div className="text-[#1B4332]/70 text-sm font-bold">{title}</div>
+    <div className="text-3xl font-black text-black mt-2">{value}</div>
+  </div>
+);
+
+export default AdminDashboard;

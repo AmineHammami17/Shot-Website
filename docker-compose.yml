@@ -1,0 +1,43 @@
+services:
+  backend-server:       
+    build: ./backend
+    networks: 
+      - app-network
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/shot
+
+  mongo:
+    image: mongo:6
+    networks:
+      - app-network
+    volumes:
+      - mongo_data:/data/db
+
+  frontend-client:
+    build: ./frontend
+    networks: 
+      - app-network
+    depends_on: 
+      - backend-server   
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend-client
+      - backend-server
+    networks:
+      - app-network
+
+networks:
+  app-network:          
+    driver: bridge
+
+volumes:
+  mongo_data:
+

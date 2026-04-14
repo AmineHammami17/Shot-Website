@@ -1,0 +1,23 @@
+import { apiRequest } from './apiClient';
+
+const mapReviewToUiModel = (review) => ({
+  id: review?._id,
+  name: review?.user?.username || review?.user?.email || 'Anonymous',
+  date: review?.createdAt
+    ? new Date(review.createdAt).toLocaleDateString('en-CA')
+    : new Date().toLocaleDateString('en-CA'),
+  rating: Number(review?.rating || 0),
+  comment: review?.comment || '',
+  photos: Array.isArray(review?.photos) ? review.photos : [],
+});
+
+export const getProductReviews = async (productId) => {
+  const response = await apiRequest(`/reviews/product/${productId}`);
+  return (response.data || []).map(mapReviewToUiModel);
+};
+
+export const addProductReview = async (productId, payload) =>
+  apiRequest(`/reviews/${productId}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });

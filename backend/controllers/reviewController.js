@@ -1,0 +1,131 @@
+const Avis = require('../models/Avis');
+const PhotoAvis = require('../models/PhotoAvis');
+const Product = require('../models/Product');
+
+const recalculateProductRatings = async (productId) => {
+    const stats = await Avis.aggregate([
+        { $match: { product: productId } },
+        {
+            $group: {
+                _id: '$product',
+                avgRating: { $avg: '$rating' },
+                count: { $sum: 1 }
+            }
+        }
+    ]);
+
+    const ratingsAverage = stats[0]?.avgRating || 0;
+    const ratingsCount = stats[0]?.count || 0;
+
+    await Product.findByIdAndUpdate(productId, {
+        ratingsAverage,
+        ratingsCount
+    });
+};
+
+exports.getProductReviews = async (req, res) => {
+    try {
+        const reviews = await Avis.find({ product: req.params.id })
+            .sort('-createdAt')
+            .populate('user', 'username surname email');
+
+        const reviewIds = reviews.map((review) => review._id);
+        const photos = await PhotoAvis.find({ avis: { $in: reviewIds } });
+
+        const photoMap = photos.reduce((acc, photo) => {
+            const key = photo.avis.toString();
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(photo.url);
+            return acc;
+        }, {});
+
+        const enrichedReviews = reviews.map((review) => ({
+            ...review.toObject(),
+            photos: photoMap[review._id.toString()] || []
+        }));
+
+        res.status(200).json({ success: true, data: enrichedReviews });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.addReview = async (req, res) => {
+    try {
+        const { rating, comment } = req.body;
+        const productId = req.params.id;
+
+        const newAvis = await Avis.create({
+            user: req.user._id, // Identifié par le middleware protect
+            product: productId,
+            rating,
+            comment
+        });
+
+        if (req.files && req.files.length > 0) {
+            const photoPromises = req.files.map(file => {
+                return PhotoAvis.create({
+                    avis: newAvis._id,
+                    url: file.path // URL Cloudinary
+                });
+            });
+            await Promise.all(photoPromises);
+        }
+
+        await recalculateProductRatings(productId);
+
+        res.status(201).json({ success: true, message: "Avis ajouté !", data: newAvis });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+// @desc    Supprimer un avis et ses photos liées
+exports.deleteReview = async (req, res) => {
+    try {
+        const avis = await Avis.findById(req.params.id);
+
+        if (!avis) {
+            return res.status(404).json({ success: false, message: "Avis non trouvé" });
+        }
+
+        // Vérifier si c'est l'auteur de l'avis ou un admin qui supprime
+        if (avis.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        // Supprimer les photos liées dans la base (et idéalement sur Cloudinary)
+        await PhotoAvis.deleteMany({ avis: avis._id });
+        await avis.deleteOne();
+        await recalculateProductRatings(avis.product);
+
+        res.status(200).json({ success: true, message: "Avis supprimé" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+exports.updateReview = async (req, res) => {
+    try {
+        const { rating, comment } = req.body;
+        // On cherche l'avis et on vérifie que l'utilisateur est bien l'auteur
+        let avis = await Avis.findById(req.params.id);
+
+        if (!avis) {
+            return res.status(404).json({ success: false, message: "Avis non trouvé" });
+        }
+
+        if (avis.user.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ success: false, message: "Non autorisé à modifier cet avis" });
+        }
+
+        avis = await Avis.findByIdAndUpdate(req.params.id, { rating, comment }, {
+            new: true,
+            runValidators: true
+        });
+
+        await recalculateProductRatings(avis.product);
+
+        res.status(200).json({ success: true, data: avis });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};

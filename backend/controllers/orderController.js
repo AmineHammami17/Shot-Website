@@ -1,0 +1,352 @@
+const Order = require('../models/Order');
+const OrderItem = require('../models/OrderItem');
+const Cart = require('../models/Cart');
+const Product = require('../models/Product');
+const Address = require('../models/Address');
+const CartItem = require('../models/CartItem');
+const Inventaire = require('../models/Inventaire');
+const Coupon = require('../models/Coupon'); 
+const User = require('../models/User');
+const mongoose = require('mongoose');
+
+const { sendOrderConfirmation, sendOrderStatusUpdate } = require('../services/emailService');
+const { generateInvoicePDF } = require('../services/pdfService');
+
+const hasUserAlreadyUsedCoupon = async (userId, promoCode) => {
+    const existingOrder = await Order.findOne({
+        user: userId,
+        promoCode,
+        statut: { $ne: 'cancelled' }
+    }).select('_id');
+
+    return Boolean(existingOrder);
+};
+
+exports.previewCoupon = async (req, res) => {
+    try {
+        const { promoCode, subtotal } = req.body;
+        if (!promoCode || !promoCode.trim()) {
+            return res.status(400).json({ success: false, message: 'Code promo requis.' });
+        }
+
+        let subTotal = Number(subtotal);
+        if (!Number.isFinite(subTotal) || subTotal <= 0) {
+            const cart = await Cart.findOne({ user: req.user._id });
+            if (!cart || !cart.items || cart.items.length === 0) {
+                return res.status(400).json({ success: false, message: 'Votre panier est vide.' });
+            }
+            subTotal = Number(cart.totalPrice || 0);
+        }
+
+        const normalizedCode = promoCode.trim().toUpperCase();
+        const coupon = await Coupon.findOne({ code: normalizedCode, isActive: true });
+
+        if (!coupon) {
+            return res.status(400).json({ success: false, message: 'Code promo invalide.' });
+        }
+
+        const alreadyUsed = await hasUserAlreadyUsedCoupon(req.user._id, normalizedCode);
+        if (alreadyUsed) {
+            return res.status(400).json({ success: false, message: 'Vous avez deja utilise ce code promo.' });
+        }
+
+        if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+            return res.status(400).json({ success: false, message: 'Code promo expiré.' });
+        }
+
+        let discountAmount = 0;
+
+        if (coupon.discountType === 'percentage') {
+            discountAmount = (subTotal * Number(coupon.discountValue || 0)) / 100;
+        } else {
+            discountAmount = Number(coupon.discountValue || 0);
+        }
+
+        discountAmount = Math.max(0, Math.min(discountAmount, subTotal));
+
+        res.status(200).json({
+            success: true,
+            data: {
+                code: coupon.code,
+                discountType: coupon.discountType,
+                discountValue: coupon.discountValue,
+                discountAmount
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 1. CRÉATION DE COMMANDE
+exports.createOrderFromCart = async (req, res) => {
+    try {
+        const cart = await Cart.findOne({ user: req.user._id }).populate({
+            path: 'items',
+            populate: { path: 'product' }
+        });
+
+        if (!cart || !cart.items || cart.items.length === 0) {
+            return res.status(400).json({ success: false, message: "Votre panier est vide." });
+        }
+
+        const { addressId, methodePaiement, promoCode } = req.body; 
+        const address = await Address.findById(addressId);
+        if (!address) return res.status(400).json({ success: false, message: "Adresse introuvable." });
+
+        // STOCK CHECK START
+        for (const item of cart.items) {
+            // Check stockQuantity from Product model
+            const currentStock = item.product.stockQuantity || 0;
+            if (currentStock < item.quantity) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Stock insuffisant pour ${item.product.name}. Stock actuel : ${currentStock}, quantite demandee : ${item.quantity}.` 
+                });
+            }
+        }
+        // STOCK CHECK END
+
+        const subTotal = cart.totalPrice;
+        const shippingCost = 7;
+        let discountAmount = 0;
+        let appliedPromoCode = null;
+
+        if (promoCode && promoCode.trim()) {
+            const normalizedCode = promoCode.trim().toUpperCase();
+            const coupon = await Coupon.findOne({ code: normalizedCode, isActive: true });
+
+            if (!coupon) {
+                return res.status(400).json({ success: false, message: "Code promo invalide." });
+            }
+
+            const alreadyUsed = await hasUserAlreadyUsedCoupon(req.user._id, normalizedCode);
+            if (alreadyUsed) {
+                return res.status(400).json({ success: false, message: "Vous avez deja utilise ce code promo." });
+            }
+
+            if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+                return res.status(400).json({ success: false, message: "Code promo expiré." });
+            }
+
+            if (coupon.discountType === 'percentage') {
+                discountAmount = (subTotal * Number(coupon.discountValue || 0)) / 100;
+            } else {
+                discountAmount = Number(coupon.discountValue || 0);
+            }
+
+            discountAmount = Math.max(0, Math.min(discountAmount, subTotal));
+            appliedPromoCode = coupon.code;
+        }
+
+        const orderItemsIds = [];
+        let itemsHtml = "";
+
+        for (const item of cart.items) {
+            const orderItem = await OrderItem.create({
+                product: item.product._id,
+                quantity: item.quantity,
+                price: item.product.price
+            });
+            orderItemsIds.push(orderItem._id);
+            itemsHtml += `<li>${item.product.name} x${item.quantity} - ${item.product.price} DT</li>`;
+            
+            // DEDUCT STOCK
+            await Product.findByIdAndUpdate(item.product._id, { 
+                $inc: { stockQuantity: -item.quantity } 
+            });
+            await Inventaire.findOneAndUpdate(
+                { product: item.product._id },
+                { $inc: { stockActuel: -item.quantity } }
+            );
+        }
+
+        const finalTotal = Math.max(0, subTotal - discountAmount) + shippingCost;
+
+        const order = await Order.create({
+            user: req.user._id,
+            orderItems: orderItemsIds,
+            adresseLivraison: addressId,
+            subTotal: subTotal,
+            fraisLivraison: shippingCost,
+            promoCode: appliedPromoCode,
+            discountAmount,
+            total: finalTotal,
+            methodePaiement: methodePaiement || 'cash',
+            numeroDeSuivi: `SHOT-${Date.now()}`,
+            statut: 'pending', 
+            dateCommande: new Date(),
+            isPaid: false
+        });
+
+        await CartItem.deleteMany({ cart: cart._id });
+        await Cart.findByIdAndUpdate(cart._id, { items: [], totalPrice: 0 });
+
+        // Envoi mail auto uniquement si CASH
+        if (order.methodePaiement === 'cash') {
+            try {
+                const user = await User.findById(req.user._id);
+                if (user) {
+                    await sendOrderConfirmation(user.email, {
+                        _id: order._id,
+                        numeroDeSuivi: order.numeroDeSuivi,
+                        subTotal: order.subTotal,
+                        total: order.total,
+                        statut: "Confirmée (Paiement à la livraison)",
+                        itemsList: `<ul>${itemsHtml}</ul>`,
+                        address: `${address.rue}, ${address.ville}`
+                    });
+                    console.log("✅ Mail Cash envoyé");
+                }
+            } catch (err) { console.error("❌ Erreur Mail:", err.message); }
+        }
+
+        res.status(201).json({ success: true, data: order });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+};
+
+// 2. CHANGER LE STATUT (ADMIN)
+exports.updateStatus = async (req, res) => {
+    try {
+        const { statut } = req.body;
+        const order = await Order.findById(req.params.id).populate('orderItems');
+
+        if (!order) return res.status(404).json({ success: false, message: "Commande non trouvée" });
+
+        if (statut === 'cancelled' && order.statut !== 'cancelled') {
+            for (const item of order.orderItems) {
+                const inv = await Inventaire.findOneAndUpdate(
+                    { product: item.product },
+                    { $inc: { stockActuel: item.quantity } },
+                    { new: true }
+                );
+                await Product.findByIdAndUpdate(item.product, { stockQuantity: inv.stockActuel });
+            }
+        }
+
+        order.statut = statut;
+        await order.save();
+
+        // Notify customer when status changes (best effort).
+        try {
+            const customer = await User.findById(order.user);
+            if (customer?.email && ['delivered', 'cancelled', 'pending', 'confirmed', 'cash'].includes(String(statut))) {
+                await sendOrderStatusUpdate(customer.email, {
+                    orderId: order._id,
+                    numeroDeSuivi: order.numeroDeSuivi,
+                    statut
+                });
+            }
+        } catch (err) {
+            console.error("❌ Erreur mail statut commande:", err.message);
+        }
+
+        res.json({ success: true, data: order });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+// 3. STATISTIQUES
+exports.getOrderStats = async (req, res) => {
+    try {
+        const stats = await Order.aggregate([
+            { $match: { user: req.user._id } },
+            { $group: {
+                _id: null,
+                totalOrders: { $sum: 1 },
+                delivered: { $sum: { $cond: [{ $eq: ["$statut", "delivered"] }, 1, 0] } },
+                pending: { $sum: { $cond: [{ $eq: ["$statut", "pending"] }, 1, 0] } },
+                cancelled: { $sum: { $cond: [{ $eq: ["$statut", "cancelled"] }, 1, 0] } }
+            }}
+        ]);
+
+        const result = stats[0] || { totalOrders: 0, delivered: 0, pending: 0, cancelled: 0 };
+        delete result.confirmed;
+
+        res.status(200).json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 4. ANNULER COMMANDE (USER)
+exports.cancelOrder = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id).populate('orderItems');
+        if (!order) return res.status(404).json({ success: false, message: "Commande non trouvée." });
+        
+        if (order.statut !== 'pending') {
+            return res.status(400).json({ success: false, message: "Seules les commandes en attente peuvent être annulées." });
+        }
+
+        for (const item of order.orderItems) {
+            const inv = await Inventaire.findOneAndUpdate(
+                { product: item.product },
+                { $inc: { stockActuel: item.quantity } },
+                { new: true }
+            );
+            await Product.findByIdAndUpdate(item.product, { stockQuantity: inv.stockActuel });
+        }
+
+        order.statut = 'cancelled';
+        await order.save();
+        res.status(200).json({ success: true, message: "Commande annulée." });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 5. MES COMMANDES
+exports.getMyOrders = async (req, res) => {
+    try {
+        const orders = await Order.find({ user: req.user._id })
+            .populate({ path: 'orderItems', populate: { path: 'product', select: 'name images' } })
+            .sort({ dateCommande: -1 });
+        res.status(200).json({ success: true, count: orders.length, data: orders });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+};
+
+// 6. DÉTAILS COMMANDE
+exports.getOrderDetails = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate('adresseLivraison')
+            .populate({ path: 'orderItems', populate: { path: 'product' } });
+        if (!order || order.user.toString() !== req.user._id.toString())
+            return res.status(404).json({ success: false, message: "Commande non trouvée." });
+        res.status(200).json({ success: true, data: order });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+};
+
+// 7. TOUTES LES COMMANDES (ADMIN)
+exports.getAllOrders = async (req, res) => {
+    try {
+        const orders = await Order.find().populate('user', 'nom surname username email').sort({ dateCommande: -1 });
+        res.status(200).json({ success: true, count: orders.length, data: orders });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+};
+
+// 8. FACTURE PDF — FIX : populate 'surname' au lieu de 'prenom'
+exports.downloadInvoice = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate('user', 'nom surname username email') // ✅ CORRIGÉ : surname = prénom dans ta base MongoDB
+            .populate('adresseLivraison')
+            .populate({
+                path: 'orderItems',
+                populate: { path: 'product' }
+            });
+
+        console.log("DONNÉES USER RÉCUPÉRÉES :", order.user);
+
+        if (!order) return res.status(404).json({ success: false, message: "Facture introuvable" });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=facture-${order._id}.pdf`);
+        
+        generateInvoicePDF(order, res);
+    } catch (error) { 
+        res.status(500).json({ success: false, message: error.message }); 
+    }
+};
