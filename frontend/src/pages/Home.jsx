@@ -212,7 +212,7 @@ const Home = () => {
         </div>
         <div className="absolute inset-x-0 bottom-4 z-10 flex h-[42%] w-full items-end justify-center pointer-events-none sm:bottom-6 sm:h-[45%] md:left-auto md:right-[-2%] md:inset-x-auto md:bottom-0 md:h-[90%] md:w-[50%] md:max-w-none md:justify-center">
           <div className="relative w-full max-w-[28rem] animate-float pointer-events-auto px-1 sm:w-[70%] sm:max-w-[24rem] sm:px-0 md:w-full md:max-w-none md:px-0">
-            <img loading="lazy" decoding="async" src="/images/Group_76.webp" alt="SHOT Product Group" className="mx-auto w-full max-w-[28rem] max-h-[560px] object-contain object-bottom drop-shadow-[0_35px_35px_rgba(0,0,0,0.5)] sm:w-auto sm:max-w-full sm:max-h-[320px] md:max-h-[700px]" />
+            <img loading="lazy" decoding="async" src="/images/Group_76.webp" srcSet="/images/Group_76_707w.webp 707w, /images/Group_76_1414w.webp 1414w, /images/Group_76_2121w.webp 2121w" sizes="(max-width: 768px) 100vw, 707px" alt="SHOT Product Group" className="mx-auto w-full max-w-[28rem] max-h-[560px] object-contain object-bottom drop-shadow-[0_35px_35px_rgba(0,0,0,0.5)] sm:w-auto sm:max-w-full sm:max-h-[320px] md:max-h-[700px]" />
             <div className="absolute left-2 top-6 hidden rounded-full border border-white/20 bg-gray-950/75 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md md:hidden">
               {t('banner_4', { defaultValue: '100% Certified Organic' })}
             </div>
