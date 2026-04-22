@@ -11,70 +11,57 @@ const mongoose = require('mongoose');
 
 const { sendOrderConfirmation, sendOrderStatusUpdate } = require('../services/emailService');
 const { generateInvoicePDF } = require('../services/pdfService');
+const { createOrderInOdoo, createCustomerInOdoo } = require('../services/odooService');
 
-const hasUserAlreadyUsedCoupon = async (userId, promoCode) => {
-    const existingOrder = await Order.findOne({
-        user: userId,
-        promoCode,
-        statut: { $ne: 'cancelled' }
-    }).select('_id');
-
-    return Boolean(existingOrder);
-};
-
+// 0. PREVIEW COUPON
 exports.previewCoupon = async (req, res) => {
     try {
         const { promoCode, subtotal } = req.body;
-        if (!promoCode || !promoCode.trim()) {
-            return res.status(400).json({ success: false, message: 'Code promo requis.' });
+        
+        if (!promoCode || subtotal === undefined) {
+            return res.status(400).json({ success: false, message: 'Code promo et sous-total requis.' });
         }
 
-        let subTotal = Number(subtotal);
-        if (!Number.isFinite(subTotal) || subTotal <= 0) {
-            const cart = await Cart.findOne({ user: req.user._id });
-            if (!cart || !cart.items || cart.items.length === 0) {
-                return res.status(400).json({ success: false, message: 'Votre panier est vide.' });
-            }
-            subTotal = Number(cart.totalPrice || 0);
-        }
-
-        const normalizedCode = promoCode.trim().toUpperCase();
-        const coupon = await Coupon.findOne({ code: normalizedCode, isActive: true });
+        const coupon = await Coupon.findOne({ code: promoCode.toUpperCase() });
 
         if (!coupon) {
-            return res.status(400).json({ success: false, message: 'Code promo invalide.' });
+            return res.status(404).json({ success: false, message: 'Code promo invalide.' });
         }
 
-        const alreadyUsed = await hasUserAlreadyUsedCoupon(req.user._id, normalizedCode);
-        if (alreadyUsed) {
-            return res.status(400).json({ success: false, message: 'Vous avez deja utilise ce code promo.' });
+        if (!coupon.isActive) {
+            return res.status(400).json({ success: false, message: 'Code promo expiré ou inactif.' });
         }
 
-        if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+        if (new Date() > new Date(coupon.expiryDate)) {
             return res.status(400).json({ success: false, message: 'Code promo expiré.' });
         }
 
         let discountAmount = 0;
-
         if (coupon.discountType === 'percentage') {
-            discountAmount = (subTotal * Number(coupon.discountValue || 0)) / 100;
-        } else {
-            discountAmount = Number(coupon.discountValue || 0);
+            discountAmount = (subtotal * coupon.discountValue) / 100;
+        } else if (coupon.discountType === 'fixed') {
+            discountAmount = coupon.discountValue;
         }
 
-        discountAmount = Math.max(0, Math.min(discountAmount, subTotal));
+        // S'assurer que le montant n'est pas négatif
+        if (discountAmount > subtotal) {
+            discountAmount = subtotal;
+        }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             data: {
-                code: coupon.code,
+                discountAmount,
+                finalTotal: subtotal - discountAmount,
+                couponCode: coupon.code,
                 discountType: coupon.discountType,
-                discountValue: coupon.discountValue,
-                discountAmount
+                discountValue: coupon.discountValue
             }
         });
+
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error('Erreur previewCoupon:', error);
+        res.status(500).json({ success: false, message: 'Erreur serveur previewCoupon.' });
     }
 };
 
@@ -85,12 +72,14 @@ exports.createOrderFromCart = async (req, res) => {
             path: 'items',
             populate: { path: 'product' }
         });
+        // ✅ CLEAN CART ICI
+        cart.items = cart.items.filter(item => item.product);
 
         if (!cart || !cart.items || cart.items.length === 0) {
             return res.status(400).json({ success: false, message: "Votre panier est vide." });
         }
 
-        const { addressId, methodePaiement, promoCode } = req.body; 
+        const { addressId, methodePaiement } = req.body; 
         const address = await Address.findById(addressId);
         if (!address) return res.status(400).json({ success: false, message: "Adresse introuvable." });
 
@@ -106,38 +95,6 @@ exports.createOrderFromCart = async (req, res) => {
             }
         }
         // STOCK CHECK END
-
-        const subTotal = cart.totalPrice;
-        const shippingCost = 7;
-        let discountAmount = 0;
-        let appliedPromoCode = null;
-
-        if (promoCode && promoCode.trim()) {
-            const normalizedCode = promoCode.trim().toUpperCase();
-            const coupon = await Coupon.findOne({ code: normalizedCode, isActive: true });
-
-            if (!coupon) {
-                return res.status(400).json({ success: false, message: "Code promo invalide." });
-            }
-
-            const alreadyUsed = await hasUserAlreadyUsedCoupon(req.user._id, normalizedCode);
-            if (alreadyUsed) {
-                return res.status(400).json({ success: false, message: "Vous avez deja utilise ce code promo." });
-            }
-
-            if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
-                return res.status(400).json({ success: false, message: "Code promo expiré." });
-            }
-
-            if (coupon.discountType === 'percentage') {
-                discountAmount = (subTotal * Number(coupon.discountValue || 0)) / 100;
-            } else {
-                discountAmount = Number(coupon.discountValue || 0);
-            }
-
-            discountAmount = Math.max(0, Math.min(discountAmount, subTotal));
-            appliedPromoCode = coupon.code;
-        }
 
         const orderItemsIds = [];
         let itemsHtml = "";
@@ -161,7 +118,9 @@ exports.createOrderFromCart = async (req, res) => {
             );
         }
 
-        const finalTotal = Math.max(0, subTotal - discountAmount) + shippingCost;
+        const subTotal = cart.totalPrice;
+        const shippingCost = 7;
+        const finalTotal = subTotal + shippingCost;
 
         const order = await Order.create({
             user: req.user._id,
@@ -169,8 +128,6 @@ exports.createOrderFromCart = async (req, res) => {
             adresseLivraison: addressId,
             subTotal: subTotal,
             fraisLivraison: shippingCost,
-            promoCode: appliedPromoCode,
-            discountAmount,
             total: finalTotal,
             methodePaiement: methodePaiement || 'cash',
             numeroDeSuivi: `SHOT-${Date.now()}`,
@@ -178,7 +135,83 @@ exports.createOrderFromCart = async (req, res) => {
             dateCommande: new Date(),
             isPaid: false
         });
+// ================= ODOO SYNC =================
+try {
+    let user = await User.findById(req.user._id);
 
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    // STEP 1: Ensure user has valid odoo_id
+    if (!user.odoo_id) {
+        console.log("⚠️ User not synced -> creating in Odoo...");
+
+        try {
+            const odooId = await createCustomerInOdoo(user);
+
+            // ❌ IMPORTANT: STOP if Odoo failed
+            if (!odooId) {
+                console.log("❌ Odoo returned invalid ID");
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to create user in Odoo"
+                });
+            }
+
+            // ✅ Save directly (NO $exists trick for now — keep it simple)
+            user.odoo_id = odooId;
+            await user.save();
+
+            console.log("✅ User synced NOW:", user.odoo_id);
+
+        } catch (err) {
+            console.log("❌ Failed to sync user:", err.message);
+            return res.status(500).json({
+                success: false,
+                message: "Odoo user sync failed"
+            });
+        }
+
+    } else {
+        console.log("✅ User already synced:", user.odoo_id);
+    }
+
+    // STEP 2: build product list
+    const odooProducts = [];
+
+    for (const item of cart.items) {
+        if (!item.product.odoo_id) {
+            return res.status(400).json({
+                success: false,
+                message: `Produit "${item.product.name}" non synchronisé avec Odoo`
+            });
+        }
+
+        odooProducts.push({
+            product_id: item.product.odoo_id,
+            qty: item.quantity
+        });
+    }
+
+    if (odooProducts.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: "Aucun produit valide pour Odoo"
+        });
+    }
+
+    const odooOrderId = await createOrderInOdoo(
+        user.odoo_id,
+        odooProducts
+    );
+
+    console.log("✅ Order synced to Odoo:", odooOrderId);
+
+} catch (err) {
+    console.log("❌ Odoo order error:", err.message);
+}
+// =================================================
         await CartItem.deleteMany({ cart: cart._id });
         await Cart.findByIdAndUpdate(cart._id, { items: [], totalPrice: 0 });
 

@@ -12,6 +12,16 @@ require('./config/passport');
 require('dotenv').config();
 
 connectDB();
+const odooService = require('./services/odooService');
+
+(async () => {
+    try {
+        await odooService.authenticate();
+        console.log("✅ Odoo connecté");
+    } catch (err) {
+        console.log("❌ Odoo error", err.message);
+    }
+})();
 
 const app = express();
 app.use(cors());

@@ -7,6 +7,9 @@ const ProductSchema = new mongoose.Schema({
     stockQuantity: { type: Number, default: 0 },
     poids: String,
     dimensions: String,
+    odoo_id: {
+    type: Number,
+    default: null},
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
     images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ImageProduit' }],
     inventory: { type: mongoose.Schema.Types.ObjectId, ref: 'Inventaire' },

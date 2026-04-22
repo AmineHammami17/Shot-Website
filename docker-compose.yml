@@ -7,6 +7,34 @@ services:
       - mongo
     environment:
       - MONGO_URI=mongodb://mongo:27017/shot
+      - ODOO_URL=http://odoo:8069
+      - ODOO_DB=shot_odoo
+      - ODOO_USERNAME=mariem.triki@esen.tn
+      - ODOO_PASSWORD=admin
+
+  db_odoo:
+    image: postgres:15
+    networks:
+      - app-network
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+    volumes:
+      - odoo_db_data:/var/lib/postgresql/data
+
+  odoo:
+    image: odoo:17.0
+    depends_on:
+      - db_odoo
+    networks:
+      - app-network
+    ports:
+      - "8069:8069"
+    environment:
+      - HOST=db_odoo
+      - USER=odoo
+      - PASSWORD=odoo
 
   mongo:
     image: mongo:6
@@ -40,4 +68,4 @@ networks:
 
 volumes:
   mongo_data:
-
+  odoo_db_data:

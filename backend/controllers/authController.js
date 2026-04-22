@@ -4,6 +4,8 @@ const sendEmail = require('../utils/sendEmail');
 const jwt = require('jsonwebtoken');
 const { getCurrencyInfo } = require('../utils/currencyConverter');
 const fs = require('fs');
+// --- AJOUTE CETTE LIGNE ICI ---
+const { createCustomerInOdoo } = require('../services/odooService');
 
 // Définition du chemin du logo
 const LOGO_PATH = 'C:/Users/MARIEM/Desktop/shot/logo_SHOT.png';
@@ -36,8 +38,20 @@ exports.register = async (req, res) => {
                 otpCode: otp, otpExpires: Date.now() + 5 * 60 * 1000
             });
             await user.save();
-        }
 
+        // SYNC ODOO
+try {
+    const odooUserId = await createCustomerInOdoo(user);
+
+    // 🔥 IMPORTANT : sauvegarder dans Mongo
+    user.odoo_id = odooUserId;
+    await user.save();
+
+    console.log("✅ User synced to Odoo:", odooUserId);
+} catch (err) {
+    console.log("❌ Odoo sync error:", err.message);
+}
+        }
         const logoAttachment = fs.existsSync(LOGO_PATH)
             ? [{ filename: 'logo_SHOT.png', path: LOGO_PATH, cid: 'logo_shot' }]
             : [];
@@ -137,7 +151,9 @@ exports.verifyOTP = async (req, res) => {
         user.isVerified = true;
         user.otpCode = null;
         user.otpExpires = null;
+
         await user.save();
+        
         res.json({ message: "Compte vérifié ! 🚀" });
     } catch (error) {
         res.status(500).json({ message: "Erreur de vérification." });

@@ -2,72 +2,78 @@ const Product = require('../models/Product');
 const ImageProduit = require('../models/ImageProduit');
 const Inventaire = require('../models/Inventaire');
 const APIFeatures = require('../utils/apiFeatures');
-
-// --- ACTIONS ADMIN (Création, Modification, Suppression) ---
+const { createProductInOdoo } = require('../services/odooService');
 
 exports.createProduct = async (req, res) => {
     try {
-        // 1. Créer le produit de base
+        // 1. Create product in Mongo
         const product = await Product.create({
             name: req.body.name,
             description: req.body.description,
             price: req.body.price,
             category: req.body.category,
-            // Utilise stockQuantity ou stock pour éviter les erreurs de saisie dans Postman
-            stockQuantity: req.body.stockQuantity || req.body.stock || 0 
+            stockQuantity: req.body.stockQuantity || req.body.stock || 0
         });
 
-        // 2. Gérer les images (Fichiers Multer OU Liens JSON)
+        // 2. Sync with Odoo
+        try {
+            const odooId = await createProductInOdoo(product);
+            product.odoo_id = odooId;
+            await product.save();
+            console.log("✅ Product synced to Odoo:", odooId);
+        } catch (err) {
+            console.log("❌ Odoo sync failed:", err.message);
+        }
+
+        // 3. Images
         let savedImages = [];
 
-        // Cas A : Images envoyées comme fichiers (form-data)
         if (req.files && req.files.length > 0) {
-            const imagePromises = req.files.map(file => {
-                return ImageProduit.create({
+            const imagePromises = req.files.map(file =>
+                ImageProduit.create({
                     product: product._id,
                     url: file.path,
                     altText: product.name
-                });
-            });
+                })
+            );
             savedImages = await Promise.all(imagePromises);
-        } 
-        // Cas B : Images envoyées comme liens texte (JSON)
-        else if (req.body.images && Array.isArray(req.body.images)) {
-            const imagePromises = req.body.images.map(url => {
-                return ImageProduit.create({
+        } else if (req.body.images && Array.isArray(req.body.images)) {
+            const imagePromises = req.body.images.map(url =>
+                ImageProduit.create({
                     product: product._id,
-                    url: url,
+                    url,
                     altText: product.name
-                });
-            });
+                })
+            );
             savedImages = await Promise.all(imagePromises);
         }
 
-        // 3. Créer l'entrée inventaire
+        // 4. Inventory
         const inventory = await Inventaire.create({
             product: product._id,
-            stockActuel: req.body.stockQuantity || req.body.stock || 0
+            stockActuel: product.stockQuantity
         });
 
-        // 4. Lier les IDs (Images + Inventaire) au produit
+        // 5. Link everything
         product.images = savedImages.map(img => img._id);
         product.inventory = inventory._id;
         await product.save();
 
-        res.status(201).json({ 
-            success: true, 
-            message: "Produit complet créé avec images !", 
-            data: product 
+        // 6. Response (ONLY ONCE)
+        res.status(201).json({
+            success: true,
+            message: "Produit créé + sync Odoo OK",
+            data: product
         });
 
     } catch (err) {
-            console.log("DÉTAIL DE L'ERREUR :", JSON.stringify(err, null, 2));        res.status(500).json({ 
+        console.log("❌ ERROR:", err.message);
+        res.status(500).json({
             success: false,
-            message: "Erreur lors de la création complète", 
-            error: err.message // Évite le [object Object] dans Postman
+            message: err.message
         });
     }
-}; // L'accolade qui manquait est ici !
+};
 
 exports.updateProduct = async (req, res) => {
     try {
