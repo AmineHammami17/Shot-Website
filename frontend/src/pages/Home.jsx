@@ -13,6 +13,7 @@ import ShopSidebar from '../components/ShopSidebar';
 import ProductGrid from '../components/ProductGrid';
 import Newsletter from '../components/Newsletter';
 import Footer from '../components/Footer';
+import Chatbot from '../components/Chatbot';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useTranslation } from 'react-i18next';
@@ -343,6 +344,9 @@ const Home = () => {
 
       <Newsletter />
       <Footer />
+
+      {/* ── Chatbot flottant ── */}
+      <Chatbot />
 
       {/* Modal newsletter */}
       {showSubscribeModal && (
