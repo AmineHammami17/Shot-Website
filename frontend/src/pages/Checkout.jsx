@@ -18,13 +18,13 @@ import MobileMenu from '../components/MobileMenu';
 import WishlistSidebar from '../components/WishlistSidebar';
 import ShopSidebar from '../components/ShopSidebar';
 
-/* â”€â”€â”€ Fallback card illustration â”€â”€â”€ */
+/* Fallback card illustration */
 const CardIllustration = ({ holder, number, expiry, cvc }) => {
   const { t } = useTranslation();
   const displayNum  = number ? number.replace(/\s/g,'').replace(/(\d{4})/g,'$1 ').trim() : '0000 0000 0000 0000';
   const displayName = holder || t('YOUR NAME');
   const displayExp  = expiry || '07 / 27';
-  const displayCvc  = cvc    ? 'â€¢'.repeat(cvc.length) : '000';
+  const displayCvc  = cvc    ? '•'.repeat(cvc.length) : '000';
   return (
     <div className="relative w-full" style={{ minHeight: 300 }}>
       <div className="absolute left-0 top-0 w-[80%] rounded-3xl p-7 shadow-2xl text-white z-10"
@@ -57,16 +57,14 @@ const CardIllustration = ({ holder, number, expiry, cvc }) => {
   );
 };
 
-/* â”€â”€â”€ style input rÃ©utilisable â”€â”€â”€ */
+/* Reusable input style */
 const inp =
   'w-full px-4 py-[13px] bg-white rounded-2xl ' +
   'border border-gray-200 ' +
   'focus:outline-none focus:border-[#149484] focus:ring-0 ' +
   'text-gray-800 font-medium text-sm placeholder-gray-400 transition-colors';
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   CHECKOUT PAGE
-ï¿½ï¿½ï¿½â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* Checkout page */
 const Checkout = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -203,7 +201,7 @@ const Checkout = () => {
         backgroundAttachment: 'fixed',
       }}
     >
-      {/* Overlay blanc lÃ©ger */}
+      {/* Light overlay */}
       <div className="absolute inset-0 bg-white/15 pointer-events-none z-0" />
 
       {/* Sidebars */}
@@ -234,7 +232,7 @@ const Checkout = () => {
         />
       </div>
 
-      {/* â•â• SUCCESS POPUP â•â• */}
+      {/* Success popup */}
       {step === 4 && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
           <div className="bg-white rounded-[32px] px-10 py-12 shadow-2xl text-center max-w-sm w-full">
@@ -269,14 +267,14 @@ const Checkout = () => {
         </div>
       )}
 
-      {/* â•â• MAIN â€” pt-[120px] navbar + espace â•â• */}
+      {/* Main content */}
       <div className={`relative z-10 pt-[120px] pb-20 px-5 md:px-10 lg:px-16 ${step===4 ? 'blur-sm pointer-events-none' : ''}`}>
         <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-10 lg:gap-14">
 
-          {/* â•â• LEFT â•â• */}
+          {/* Left column */}
           <div className="flex-[1.4] min-w-0">
 
-            {/* â”€â”€â”€ STEP 1: Shipping â”€â”€â”€ */}
+            {/* Step 1: Shipping */}
             {step === 1 && (
               <div className="space-y-5">
                 <h2 className="text-[22px] font-black text-gray-900 mb-6">{t('Shipping Informations')}</h2>
@@ -362,7 +360,7 @@ const Checkout = () => {
               </div>
             )}
 
-            {/* â”€â”€â”€ STEP 2: Payment method â”€â”€â”€ */}
+            {/* Step 2: Payment method */}
             {step === 2 && (
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -438,7 +436,7 @@ const Checkout = () => {
               </div>
             )}
 
-            {/* â”€â”€â”€ STEP 3: Card details â”€â”€â”€ */}
+            {/* Step 3: Card details */}
             {step === 3 && (
               <div className="space-y-6">
                 <div>
@@ -494,7 +492,7 @@ const Checkout = () => {
                         <input
                           type="password"
                           className={inp + ' text-center tracking-widest'}
-                          placeholder="â€¢â€¢â€¢"
+                          placeholder="•••"
                           autoComplete="cc-csc"
                           maxLength={3}
                           value={card.cvc}
@@ -543,7 +541,7 @@ const Checkout = () => {
             )}
           </div>
 
-          {/* â•â• RIGHT: Summary â•â• */}
+          {/* Right column: summary */}
           {step < 3 && (
             <div className="w-full lg:w-[400px] shrink-0">
               <div className="bg-white/90 backdrop-blur-sm rounded-[32px] p-8 shadow-sm">

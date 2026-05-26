@@ -195,15 +195,31 @@ knowledge_base = [
         "Pour toute question, contactez-nous à contact@shot.tn"
     ),
 
-    # ── À PROPOS DE S.HOT ───────────────────────────────────────────────────
+    # ── MARQUE SHOT PREMIUM SPIRULINA / FOOD4FUTURE ─────────────────────────
     (
-        "qui est shot marque tunisienne entreprise société haute technologie alimentaire "
-        "origine tunisie local made in tunisia",
-        "S.HOT (Société de Haute Technologie Alimentaire) est une marque tunisienne "
-        "spécialisée dans la production de spiruline premium. "
-        "Nous cultivons et transformons notre spiruline localement en Tunisie, "
-        "avec des procédés innovants (pressage à froid) pour garantir la meilleure qualité nutritionnelle. "
-        "Notre mission : rendre la nutrition de haute performance accessible à tous les Tunisiens."
+        "shot premium spirulina food4future marque startup foodtech microalgues "
+        "nutrition naturelle fonctionnelle écoresponsable bien-être innovation locale "
+        "positionnement premium engagements perspectives développement tunisie europe international "
+        "qui est shot marque tunisienne entreprise société",
+        "Présentation de la marque SHOT Premium Spirulina (Une marque de Food4Future)\n\n"
+        "SHOT Premium Spirulina est une marque développée par la startup FoodTech Food4Future, "
+        "spécialisée dans les solutions alimentaires durables à base de microalgues, principalement la spiruline. "
+        "La marque a été créée avec l'ambition de démocratiser l'accès à une nutrition naturelle, fonctionnelle et responsable, "
+        "en proposant des produits premium à haute valeur nutritionnelle adaptés aux besoins des consommateurs modernes.\n\n"
+        "Positionnement de la marque : Premium, Innovante, Écoresponsable, Orientée bien-être et nutrition fonctionnelle.\n"
+        "La marque met l'accent sur : la qualité des ingrédients, des procédés de production durables, "
+        "un design moderne et accessible, et une expérience de consommation simple et pratique.\n\n"
+        "Engagements :\n"
+        "• Proposer des produits naturels et de qualité.\n"
+        "• Soutenir une alimentation durable.\n"
+        "• Encourager l'innovation locale et responsable.\n"
+        "• Développer des solutions nutritionnelles accessibles et à fort impact positif.\n\n"
+        "Perspectives de développement :\n"
+        "1. Étendre sa présence sur les marchés tunisien, européen et international.\n"
+        "2. Développer de nouveaux produits fonctionnels à base de microalgues.\n"
+        "3. Renforcer ses collaborations avec des distributeurs, partenaires B2B et acteurs de la santé et du bien-être.\n"
+        "4. Intégrer progressivement des technologies intelligentes et des solutions innovantes issues de l'écosystème Food4Future.\n\n"
+        "Nos spirulines sont cultivées et transformées en Tunisie avec un pressage à froid pour préserver 100% des nutriments actifs."
     ),
 
     # ── CONTACT ─────────────────────────────────────────────────────────────
@@ -301,7 +317,35 @@ vectorizer = TfidfVectorizer(
 )
 tfidf_matrix = vectorizer.fit_transform(questions)
 
-print(f"✅ Chatbot S.HOT prêt — {len(questions)} entrées dans la base de connaissances.")
+BRAND_ANSWER = next(
+    (item[1] for item in knowledge_base if "food4future" in item[0]),
+    None,
+)
+
+BRAND_TRIGGERS = (
+    "food4future",
+    "shot premium",
+    "premium spirulina",
+    "marque shot",
+    "qui est shot",
+    "presentation marque",
+    "présentation marque",
+    "positionnement",
+    "engagements",
+    "perspectives",
+    "startup foodtech",
+    "microalgues",
+)
+
+
+def brand_reply_if_relevant(message: str):
+    lower = message.lower()
+    if any(trigger in lower for trigger in BRAND_TRIGGERS):
+        return BRAND_ANSWER
+    return None
+
+
+print(f"[OK] Chatbot S.HOT pret — {len(questions)} entrees dans la base de connaissances.")
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +360,14 @@ def chat():
     user_message = data["message"].strip()
     if not user_message:
         return jsonify({"error": "Le message ne peut pas être vide."}), 400
+
+    brand_answer = brand_reply_if_relevant(user_message)
+    if brand_answer:
+        return jsonify({
+            "reply": brand_answer,
+            "confidence": 1.0,
+            "source": "brand_knowledge",
+        })
 
     user_vec     = vectorizer.transform([user_message.lower()])
     similarities = cosine_similarity(user_vec, tfidf_matrix).flatten()

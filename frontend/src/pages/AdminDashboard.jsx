@@ -598,7 +598,7 @@ const AdminDashboard = () => {
                       {categories.map((c) => (
                         <tr key={c._id} className="border-b border-[#129384]/5">
                           <td className="py-3 font-bold">{c.name}</td>
-                          <td className="py-3">{c.description || 'â€”'}</td>
+                          <td className="py-3">{c.description || '—'}</td>
                           <td className="py-3 text-right">
                             <div className="inline-flex gap-2">
                               <button onClick={() => handleEditCategory(c)} className="px-3 py-2 rounded-xl bg-[#F0FFF4] hover:bg-[#e6f4f1] border border-[#129384]/10 text-[#129384]">Edit</button>
@@ -652,7 +652,7 @@ const AdminDashboard = () => {
                                 <img loading="lazy" decoding="async" src={img} alt={p.name} className="w-10 h-10 rounded-xl object-cover bg-[#F0FFF4]" />
                                 <div>
                                   <div className="font-bold text-[#129384]">{p.name}</div>
-                                  <div className="text-[#129384]/60 text-xs">{p.category?.name || 'â€”'}</div>
+                                  <div className="text-[#129384]/60 text-xs">{p.category?.name || '—'}</div>
                                 </div>
                               </div>
                             </td>
@@ -721,7 +721,7 @@ const AdminDashboard = () => {
                     {orders.map((o) => (
                       <tr key={o._id} className="border-b border-[#1B4332]/5">
                         <td className="py-3 font-bold">#{String(o._id).slice(-8).toUpperCase()}</td>
-                        <td className="py-3">{o.user?.email || o.user?.username || 'â€”'}</td>
+                        <td className="py-3">{o.user?.email || o.user?.username || '—'}</td>
                         <td className="py-3">{Number(o.total || 0).toFixed(3)} DT</td>
                         <td className="py-3">
                           <select
@@ -874,8 +874,8 @@ const AdminDashboard = () => {
                   <tbody>
                     {reviews.map((r) => (
                       <tr key={r._id} className="border-b border-[#1B4332]/5">
-                        <td className="py-3 font-bold">{r.product?.name || 'â€”'}</td>
-                        <td className="py-3">{r.user?.email || 'â€”'}</td>
+                        <td className="py-3 font-bold">{r.product?.name || '—'}</td>
+                        <td className="py-3">{r.user?.email || '—'}</td>
                         <td className="py-3">{r.rating} / 5</td>
                         <td className="py-3 text-[#1B4332]/80">{r.comment}</td>
                         <td className="py-3 text-right">

@@ -181,54 +181,77 @@ const Home = () => {
       />
 
       {/* HERO */}
-      <header className="relative w-full min-h-[100svh] md:min-h-screen overflow-hidden bg-cover bg-center" style={{ backgroundImage: "url('/images/Rectangle 39.webp')" }}>
-        <div className="relative z-20 container mx-auto px-5 sm:px-6 md:px-15 pt-28 sm:pt-32 md:pt-56 pb-[19rem] sm:pb-[24rem] md:pb-0 text-center text-white md:max-w-[55%] md:ml-[8%] md:text-left">
-          <div className="mb-6 hidden w-fit max-w-full items-center gap-3 rounded-full border border-white/20 bg-gray-950/70 px-4 py-2.5 backdrop-blur-md md:flex md:py-3">
-            <div className="w-2 h-2 bg-[#238d7b] rounded-full relative flex items-center justify-center"><div className="absolute w-full h-full bg-[#238d7b] rounded-full animate-ping opacity-75"></div></div>
-            <span className="text-[10px] md:text-[12px] font-bold uppercase tracking-[0.2em] opacity-90">{t('hero_badge', { defaultValue: 'Ready to Upgrade Your Energy ?' })}</span>
-          </div>
-          <h1 className="mx-auto max-w-[10ch] text-[clamp(2rem,8vw,3rem)] font-black leading-[1.05] sm:max-w-[11ch] sm:text-4xl sm:leading-[1.1] md:mx-0 md:text-6xl lg:text-7xl">
-            {t('hero_title_1', { defaultValue: 'Spirulina Excellence' })} <br />
-            {t('hero_title_2', { defaultValue: 'For Elevated' })} <br />
-            <span className="mt-2 inline-block font-kemangi text-[clamp(2.5rem,11vw,4rem)] leading-none text-[#238d7b] sm:text-5xl md:text-8xl lg:text-9xl">
-              {displayText}
-            </span>
-          </h1>
-          <div className="mx-auto mt-10 flex w-full max-w-sm flex-col items-center gap-3 sm:max-w-none sm:flex-row sm:items-center sm:justify-center md:mx-0 md:mt-16 md:justify-start md:gap-5">
-            <Link to="/products" className="w-full sm:w-auto">
-              <button className="flex w-full items-center justify-center gap-3 rounded-full bg-[#238d7b] px-6 py-3.5 text-white font-extrabold transition-all shadow-[0_0_25px_rgba(35,141,123,0.5)] pointer-events-auto group hover:bg-[#1f7a6a] active:!bg-[#47cab4] active:scale-95 sm:w-auto sm:justify-start sm:gap-4 sm:px-9 sm:py-4">
-                {t('btn_shop', { defaultValue: 'Shop now' })}
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#238d7b] transition-transform group-hover:translate-x-1">
-                  <svg className="block" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                </span>
-              </button>
-            </Link>
-            <button className="group flex w-full items-center justify-center gap-3 rounded-full border border-black/10 bg-white px-6 py-3.5 text-black font-bold transition-all pointer-events-auto hover:bg-gray-100 active:!bg-[#238d7b] active:!text-white active:scale-95 sm:w-auto sm:px-9 sm:py-4">
-              {t('btn_community', { defaultValue: 'Join our community' })}
-              <svg className="block shrink-0 text-[#0e8471] transition-colors group-active:!text-white" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.032 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.18-2.587-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.001.332.005c.109.004.258-.041.404.314l.542 1.312c.058.14.096.303.003.488l-.204.412c-.09.13-.184.216-.08.396.104.18.459.758.986 1.225.679.602 1.252.788 1.432.874.18.086.285.071.39-.051.105-.122.446-.519.563-.695.117-.175.234-.145.391-.087l1.314.618c.157.073.262.111.3.173.038.063.038.36-.106.765zM12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.178L2 22l4.957-1.302C8.36 21.528 10.103 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.634 0-3.166-.431-4.492-1.182l-.322-.182-2.413.634.646-2.355-.2-.318A7.953 7.953 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div className="absolute inset-x-0 bottom-4 z-10 flex h-[42%] w-full items-end justify-center pointer-events-none sm:bottom-6 sm:h-[45%] md:left-auto md:right-[-2%] md:inset-x-auto md:bottom-0 md:h-[90%] md:w-[50%] md:max-w-none md:justify-center">
-          <div className="relative w-full max-w-[28rem] animate-float pointer-events-auto px-1 sm:w-[70%] sm:max-w-[24rem] sm:px-0 md:w-full md:max-w-none md:px-0">
-            <img loading="lazy" decoding="async" src="/images/Group_76.webp" srcSet="/images/Group_76_707w.webp 707w, /images/Group_76_1414w.webp 1414w, /images/Group_76_2121w.webp 2121w" sizes="(max-width: 768px) 100vw, 707px" alt="SHOT Product Group" className="mx-auto w-full max-w-[28rem] max-h-[560px] object-contain object-bottom drop-shadow-[0_35px_35px_rgba(0,0,0,0.5)] sm:w-auto sm:max-w-full sm:max-h-[320px] md:max-h-[700px]" />
-            <div className="absolute left-2 top-6 hidden rounded-full border border-white/20 bg-gray-950/75 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md md:hidden">
-              {t('banner_4', { defaultValue: '100% Certified Organic' })}
+      <header
+        className="relative isolate w-full overflow-hidden bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/Rectangle 39.webp')" }}
+      >
+        <div className="relative z-20 mx-auto grid min-h-[100svh] w-full max-w-7xl grid-rows-[auto_auto] gap-6 px-5 pb-6 pt-28 sm:px-6 sm:gap-8 sm:pb-8 sm:pt-32 md:min-h-screen md:grid-cols-2 md:grid-rows-1 md:items-center md:gap-10 md:px-12 md:pb-14 md:pt-56 lg:px-16">
+          <div className="flex min-w-0 flex-col text-center text-white md:max-w-xl md:text-left">
+            <div className="mb-6 hidden w-fit max-w-full items-center gap-3 rounded-full border border-white/20 bg-gray-950/70 px-4 py-2.5 backdrop-blur-md md:flex md:py-3">
+              <div className="relative flex h-2 w-2 items-center justify-center rounded-full bg-[#238d7b]">
+                <div className="absolute h-full w-full animate-ping rounded-full bg-[#238d7b] opacity-75" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-90 md:text-[12px]">
+                {t('hero_badge', { defaultValue: 'Ready to Upgrade Your Energy ?' })}
+              </span>
             </div>
-            <div className="absolute right-2 bottom-10 hidden rounded-full border border-white/20 bg-white/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#0c1312] shadow-lg backdrop-blur-md md:hidden">
-              {t('why_card3_t', { defaultValue: 'Pure. Potent. Transparent.' })}
+            <h1 className="mx-auto max-w-[12ch] text-[clamp(2rem,8vw,3rem)] font-black leading-[1.05] sm:max-w-[14ch] sm:text-4xl sm:leading-[1.1] md:mx-0 md:max-w-none md:text-6xl lg:text-7xl">
+              {t('hero_title_1', { defaultValue: 'Spirulina Excellence' })} <br />
+              {t('hero_title_2', { defaultValue: 'For Elevated' })} <br />
+              <span className="mt-2 inline-block font-kemangi text-[clamp(2.5rem,11vw,4rem)] leading-none text-[#238d7b] sm:text-5xl md:text-8xl lg:text-9xl">
+                {displayText}
+              </span>
+            </h1>
+            <div className="mx-auto mt-8 flex w-full max-w-md shrink-0 flex-col items-stretch gap-3 sm:mt-10 sm:max-w-lg sm:flex-row sm:flex-wrap sm:justify-center md:mx-0 md:mt-12 md:max-w-none md:justify-start md:gap-4">
+              <Link to="/products" className="w-full sm:w-auto sm:min-w-[12rem]">
+                <button
+                  type="button"
+                  className="group flex w-full items-center justify-center gap-3 rounded-full bg-[#238d7b] px-6 py-3.5 font-extrabold text-white shadow-[0_0_25px_rgba(35,141,123,0.5)] transition-all hover:bg-[#1f7a6a] active:scale-95 active:!bg-[#47cab4] sm:justify-center sm:px-9 sm:py-4 md:justify-start"
+                >
+                  {t('btn_shop', { defaultValue: 'Shop now' })}
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#238d7b] transition-transform group-hover:translate-x-1">
+                    <svg className="block" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                  </span>
+                </button>
+              </Link>
+              <button
+                type="button"
+                className="group flex w-full items-center justify-center gap-3 rounded-full border border-black/10 bg-white px-6 py-3.5 font-bold text-black transition-all hover:bg-gray-100 active:scale-95 active:!bg-[#238d7b] active:!text-white sm:w-auto sm:min-w-[12rem] sm:px-9 sm:py-4"
+              >
+                {t('btn_community', { defaultValue: 'Join our community' })}
+                <svg className="block shrink-0 text-[#0e8471] transition-colors group-active:!text-white" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.032 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.18-2.587-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.001.332.005c.109.004.258-.041.404.314l.542 1.312c.058.14.096.303.003.488l-.204.412c-.09.13-.184.216-.08.396.104.18.459.758.986 1.225.679.602 1.252.788 1.432.874.18.086.285.071.39-.051.105-.122.446-.519.563-.695.117-.175.234-.145.391-.087l1.314.618c.157.073.262.111.3.173.038.063.038.36-.106.765zM12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.178L2 22l4.957-1.302C8.36 21.528 10.103 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.634 0-3.166-.431-4.492-1.182l-.322-.182-2.413.634.646-2.355-.2-.318A7.953 7.953 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative flex min-h-0 items-end justify-center md:justify-end md:self-stretch">
+            <div className="relative w-full max-w-[min(100%,20rem)] animate-float sm:max-w-[22rem] md:max-w-[min(100%,28rem)] lg:max-w-[32rem]">
+              <img
+                loading="lazy"
+                decoding="async"
+                src="/images/Group_76.webp"
+                srcSet="/images/Group_76_707w.webp 707w, /images/Group_76_1414w.webp 1414w, /images/Group_76_2121w.webp 2121w"
+                sizes="(max-width: 768px) 85vw, 50vw"
+                alt="SHOT Product Group"
+                className="mx-auto max-h-[min(36vh,260px)] w-full object-contain object-bottom drop-shadow-[0_35px_35px_rgba(0,0,0,0.5)] sm:max-h-[min(40vh,300px)] md:max-h-[min(72vh,620px)]"
+              />
             </div>
           </div>
         </div>
       </header>
 
       {/* BANNER */}
-      <div className={`w-full transition-colors duration-700 ease-in-out py-12 flex items-center justify-center overflow-hidden border-y border-white/5 ${bannerData[currentBanner].color}`}>
-        <div className="flex items-center gap-8 px-10">
-          <span className="text-white transform scale-125">{bannerData[currentBanner].icon}</span>
-          <span className="text-white text-3xl md:text-[32px] font-bold tracking-normal whitespace-nowrap leading-none">
+      <div
+        className={`relative z-30 mt-0 w-full shrink-0 border-y border-white/10 transition-colors duration-700 ease-in-out ${bannerData[currentBanner].color}`}
+      >
+        <div className="flex min-h-[4.5rem] items-center justify-center gap-4 px-5 py-5 sm:min-h-[5rem] sm:gap-6 sm:px-8 sm:py-6 md:min-h-[5.5rem] md:gap-8 md:py-7">
+          <span className="shrink-0 text-white sm:scale-110 md:scale-125">{bannerData[currentBanner].icon}</span>
+          <span className="text-center text-lg font-bold leading-tight tracking-normal text-white sm:text-2xl md:text-[32px] md:whitespace-nowrap">
             {t(bannerData[currentBanner].textKey)}
           </span>
         </div>

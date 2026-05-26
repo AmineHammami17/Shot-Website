@@ -200,9 +200,8 @@ exports.login = async (req, res) => {
             { expiresIn: '24h' }
         );
 
-        // 2. Détection de l'IP et Currency
-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        const currencyData = await getCurrencyInfo(ip);
+        // 2. Devise figée DT (Tunisie uniquement)
+        const currencyData = await getCurrencyInfo();
 
         // 3. Envoi de la réponse unique
         res.json({ 

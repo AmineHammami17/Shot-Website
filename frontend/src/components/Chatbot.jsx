@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { sendChatMessage } from '../services/chatService';
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,8 +29,8 @@ const Chatbot = () => {
     }
   }, [isOpen]);
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const handleSend = async (textOverride) => {
+    const trimmed = (textOverride ?? input).trim();
     if (!trimmed || isTyping) return;
 
     const userMsg = { id: Date.now(), text: trimmed, sender: 'user' };
@@ -38,25 +39,21 @@ const Chatbot = () => {
     setIsTyping(true);
 
     try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed }),
-      });
-
-      const data = await res.json();
+      const data = await sendChatMessage(trimmed);
       const reply = data.reply || "Je n'ai pas pu générer une réponse.";
 
       setMessages((prev) => [
         ...prev,
         { id: Date.now() + 1, text: reply, sender: 'bot' },
       ]);
-    } catch {
+    } catch (error) {
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
-          text: "Désolé, je rencontre un problème de connexion. Réessayez dans un instant !",
+          text: error?.message?.includes('Request failed')
+            ? "Désolé, je rencontre un problème de connexion. Réessayez dans un instant !"
+            : (error?.message || "Désolé, je rencontre un problème de connexion. Réessayez dans un instant !"),
           sender: 'bot',
         },
       ]);
@@ -150,7 +147,7 @@ const Chatbot = () => {
               {quickReplies.map((q) => (
                 <button
                   key={q}
-                  onClick={() => { setInput(q); setTimeout(handleSend, 0); }}
+                  onClick={() => handleSend(q)}
                   className="text-[11px] font-medium text-[#238d7b] border border-[#238d7b]/40 rounded-full px-3 py-1 hover:bg-[#238d7b] hover:text-white transition-colors"
                 >
                   {q}
@@ -172,7 +169,7 @@ const Chatbot = () => {
               className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#238d7b]/30 transition disabled:opacity-50 placeholder:text-gray-400"
             />
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={isTyping || !input.trim()}
               className="w-9 h-9 rounded-full bg-[#238d7b] flex items-center justify-center text-white hover:bg-[#1a6e60] transition-colors disabled:bg-gray-200 disabled:cursor-not-allowed shrink-0 shadow-md"
               aria-label="Envoyer"

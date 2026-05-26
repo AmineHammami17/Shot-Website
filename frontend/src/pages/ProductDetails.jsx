@@ -15,6 +15,7 @@ import ProductGrid     from '../components/ProductGrid';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart }     from '../context/CartContext';
 import { getProductById, getProducts } from '../services/productService';
+import { cleanDisplayText } from '../utils/productMapper';
 import { addProductReview, getProductReviews } from '../services/reviewService';
 
 const ProductDetails = () => {
@@ -81,8 +82,8 @@ const ProductDetails = () => {
     fetchData();
   }, [productId]);
 
-  const getTotalPrice = () => (product.priceNum * quantity).toLocaleString('en-US');
-  const formatPrice = (price) => price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const getTotalPrice = () => (product.priceNum * quantity).toFixed(3);
+  const formatTotalPrice = (amount) => cleanDisplayText(amount);
 
   if (isLoadingProduct) {
     return (
@@ -195,7 +196,7 @@ const ProductDetails = () => {
         .key-features h3 { font-weight:700; color:#1a1a1a; margin-bottom:10px; font-size:14px; }
         .key-features ul { list-style:none; padding:0; margin:0; }
         .key-features li { padding:6px 0; color:#404040; font-size:13px; font-weight:500; line-height:1.5; }
-        .key-features li:before { content:'â€¢ '; color:#238d7b; font-weight:bold; margin-right:8px; font-size:15px; }
+        .key-features li:before { content:'\\2022 '; color:#238d7b; font-weight:bold; margin-right:8px; font-size:15px; }
         .cart-box { background:#238d7b; color:white; padding:22px; border-radius:18px; box-shadow:0 10px 32px rgba(35,141,123,0.3); }
         .cart-box-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
         .cart-box-title { font-weight:700; font-size:15px; }
@@ -294,19 +295,19 @@ const ProductDetails = () => {
           <div className="product-info">
             <h1>{product.name}</h1>
             <div className="rating-section"><div className="rating-stars">{renderStars(averageRating)}</div><span className="rating-text">{averageRating.toFixed(1)} ({totalReviewsCount} {t('reviews_count')})</span></div>
-            <div className="price-section">{product.price}</div>
-            <p className="description-text">{product.description}</p>
-            <div className="key-features"><h3>{t('key_features')}</h3><ul>{product.features.map((f, i) => <li key={i}>{f}</li>)}</ul></div>
+            <div className="price-section">{cleanDisplayText(product.price)}</div>
+            <p className="description-text">{cleanDisplayText(product.description)}</p>
+            <div className="key-features"><h3>{t('key_features')}</h3><ul>{product.features.map((f, i) => <li key={i}>{cleanDisplayText(f)}</li>)}</ul></div>
             <div className="cart-box">
               <div className="cart-box-header">
                 <span className="cart-box-title">{product.name}</span>
                 <div className="quantity-controls">
-                  <button className="quantity-btn" onClick={() => setQuantity(Math.max(1, quantity - 1))}>âˆ’</button>
+                  <button type="button" className="quantity-btn" aria-label={t('decrease_quantity', { defaultValue: 'Decrease quantity' })} onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
                   <input type="text" className="quantity-input" value={quantity} readOnly />
                   <button className="quantity-btn" onClick={() => setQuantity(quantity + 1)}>+</button>
                 </div>
               </div>
-              <div className="price-display"><span className="price-label">{t('total_price')}</span><span className="price-value">{formatPrice(getTotalPrice())} DT</span></div>
+              <div className="price-display"><span className="price-label">{t('total_price')}</span><span className="price-value">{formatTotalPrice(getTotalPrice())} DT</span></div>
               <button className="add-to-cart-btn" onClick={handleAddToCart}>{t('add_to_cart')}</button>
             </div>
           </div>
@@ -320,7 +321,7 @@ const ProductDetails = () => {
               <button key={key} className={`tab ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key)}>{label}</button>
             ))}
           </div>
-          {activeTab === 'description' && (<div className="tab-content"><h2>{t('prod_desc_title')}</h2><p>{product.fullDescription}</p></div>)}
+          {activeTab === 'description' && (<div className="tab-content"><h2>{t('prod_desc_title')}</h2><p>{cleanDisplayText(product.fullDescription)}</p></div>)}
           {activeTab === 'nutritional' && (
             <div className="tab-content">
               <h2>{t('nutri_info_title')}</h2>
@@ -360,7 +361,7 @@ const ProductDetails = () => {
         </div>
       </div>
 
-      {/* âœ… PRODUITS RECOMMANDÃ‰S */}
+      {/* Produits recommandés */}
       {recommendedProducts.length > 0 && (
         <div className="px-4 md:px-12">
           <div className="recommended-section">
@@ -394,7 +395,7 @@ const ProductDetails = () => {
       {showReviewModal && (
         <div className="review-modal" onClick={() => setShowReviewModal(false)}>
           <div className="review-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="close-modal-btn" onClick={() => setShowReviewModal(false)}>Ã—</button>
+            <button type="button" className="close-modal-btn" aria-label={t('close', { defaultValue: 'Close' })} onClick={() => setShowReviewModal(false)}>&times;</button>
             <div className="review-modal-header"><div className="review-modal-icon"><Headphones size={30} /></div><h2 className="review-modal-title">{t('add_review_title')}</h2><p className="review-modal-subtitle">{t('add_rating_sub')}</p></div>
             <form onSubmit={handleSubmitReview}>
               <div className="review-stars-input">
