@@ -55,6 +55,8 @@ services:
       - HOST=db_odoo
       - USER=odoo
       - PASSWORD=odoo
+    volumes: # <--- ADD THIS
+      - odoo_web_data:/var/lib/odoo # <--- ADD THIS
 
   mongo:
     image: mongo:6
@@ -89,3 +91,4 @@ networks:
 volumes:
   mongo_data:
   odoo_db_data:
+  odoo_web_data:

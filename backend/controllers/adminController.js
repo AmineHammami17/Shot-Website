@@ -43,6 +43,7 @@ const validateCouponPayload = (payload = {}) => {
     };
 };
 
+
 // @desc    Statistiques globales du Dashboard
 exports.getDashboardStats = async (req, res) => {
     try {
@@ -82,6 +83,23 @@ exports.getDashboardStats = async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 };
+
+
+   // @desc    Obtenir le lien de la communauté WhatsApp
+exports.getWhatsAppLink = async (req, res) => {
+    try {
+        // Tu peux mettre ton vrai lien de groupe ici
+        const whatsappLink = "https://chat.whatsapp.com/TonCodeDeGroupeIci"; 
+
+        res.status(200).json({ 
+            success: true, 
+            link: whatsappLink 
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
 
 // @desc    Obtenir tous les messages de contact
 exports.getMessages = async (req, res) => {

@@ -32,4 +32,7 @@ router.post('/coupons', adminCtrl.createCoupon);
 router.put('/coupons/:id', adminCtrl.updateCoupon);
 router.delete('/coupons/:id', adminCtrl.deleteCoupon);
 
+//--WHATSAPP-COMMUNITY--
+router.get('/whatsapp-community', adminCtrl.getWhatsAppLink);
+
 module.exports = router;
