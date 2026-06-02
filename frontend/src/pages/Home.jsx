@@ -18,6 +18,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useTranslation } from 'react-i18next';
 import { getProducts } from '../services/productService';
+import { apiRequest } from '../services/apiClient';
 
 const Home = () => {
   const { t } = useTranslation();
@@ -47,6 +48,20 @@ const Home = () => {
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   const [subscribeEmail, setSubscribeEmail] = useState('');
   const [products, setProducts] = useState([]);
+
+  const handleJoinCommunity = async () => {
+    try {
+      const data = await apiRequest('/admin/whatsapp-community');
+      if (data.success && data.link) {
+        window.open(data.link, '_blank');
+      } else {
+        alert(t('error_community_link', { defaultValue: 'Impossible de récupérer le lien de la communauté.' }));
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du lien WhatsApp:', error);
+      alert(t('error_network', { defaultValue: 'Erreur réseau.' }));
+    }
+  };
 
   const bannerData = [
     { textKey: "banner_1", color: "bg-[#f39c12]", icon: <Zap size={32} strokeWidth={3} /> },
@@ -219,6 +234,7 @@ const Home = () => {
               </Link>
               <button
                 type="button"
+                onClick={handleJoinCommunity}
                 className="group flex w-full items-center justify-center gap-3 rounded-full border border-black/10 bg-white px-6 py-3.5 font-bold text-black transition-all hover:bg-gray-100 active:scale-95 active:!bg-[#238d7b] active:!text-white sm:w-auto sm:min-w-[12rem] sm:px-9 sm:py-4"
               >
                 {t('btn_community', { defaultValue: 'Join our community' })}

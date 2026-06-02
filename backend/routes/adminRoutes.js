@@ -8,6 +8,10 @@ const reviewCtrl = require('../controllers/reviewController');
 // Import des middlewares de sécurité
 const { protect, admin } = require('../middlewares/auth'); 
 
+//--WHATSAPP-COMMUNITY (PUBLIQUE)--
+// On place cette route AVANT les middlewares de protection
+router.get('/whatsapp-community', adminCtrl.getWhatsAppLink);
+
 // --- PROTECTION GLOBALE ---
 // Toutes les routes ci-dessous demandent d'être connecté ET admin
 router.use(protect);
@@ -31,8 +35,5 @@ router.get('/coupons', adminCtrl.getCoupons);
 router.post('/coupons', adminCtrl.createCoupon);
 router.put('/coupons/:id', adminCtrl.updateCoupon);
 router.delete('/coupons/:id', adminCtrl.deleteCoupon);
-
-//--WHATSAPP-COMMUNITY--
-router.get('/whatsapp-community', adminCtrl.getWhatsAppLink);
 
 module.exports = router;

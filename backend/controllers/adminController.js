@@ -89,7 +89,7 @@ exports.getDashboardStats = async (req, res) => {
 exports.getWhatsAppLink = async (req, res) => {
     try {
         // Tu peux mettre ton vrai lien de groupe ici
-        const whatsappLink = "https://chat.whatsapp.com/TonCodeDeGroupeIci"; 
+        const whatsappLink = "https://chat.whatsapp.com/FpgwlQ6LW44DT7iCqcwpzH?s=sw&p=i&mlu=3&ilr=0"; 
 
         res.status(200).json({ 
             success: true, 

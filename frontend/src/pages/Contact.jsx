@@ -6,6 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 
+// Services
+import { apiRequest } from '../services/apiClient';
+
 // Import des components
 import Navbar from '../components/Navbar';
 import MobileHeader from '../components/MobileHeader';
@@ -49,9 +52,41 @@ const Contact = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const handleSubmit = (e) => {
+  const [formData, setFormData] = useState({
+    nom: '',
+    prenom: '',
+    email: '',
+    message: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setShowSuccessModal(true);
+    try {
+      const data = await apiRequest('/contact', {
+        method: 'POST',
+        body: JSON.stringify({
+          nom: `${formData.nom} ${formData.prenom}`,
+          email: formData.email,
+          sujet: 'Message depuis la page Contact', // Required by backend schema
+          message: formData.message,
+        }),
+      });
+
+      if (data.success || data.nom) { // Adjust condition based on API returned object
+        setShowSuccessModal(true);
+        setFormData({ nom: '', prenom: '', email: '', message: '' }); // reset form
+      } else {
+        console.error('Erreur lors de l\'envoi:', data.message);
+        alert(`Erreur: ${data.message || 'Impossible d\'envoyer le message.'}`);
+      }
+    } catch (error) {
+      console.error('Erreur réseau:', error);
+      alert('Erreur réseau. Veuillez vérifier votre connexion.');
+    }
   };
 
   return (
@@ -229,11 +264,42 @@ const Contact = () => {
             <h2 className="title-large mb-10">{t('contact_send_msg')}</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-2 gap-5">
-                <input type="text" placeholder={t('contact_name')} className="form-input" required />
-                <input type="text" placeholder={t('contact_surname')} className="form-input" required />
+                <input 
+                  type="text" 
+                  name="nom"
+                  value={formData.nom}
+                  onChange={handleChange}
+                  placeholder={t('contact_name')} 
+                  className="form-input" 
+                  required 
+                />
+                <input 
+                  type="text" 
+                  name="prenom"
+                  value={formData.prenom}
+                  onChange={handleChange}
+                  placeholder={t('contact_surname')} 
+                  className="form-input" 
+                  required 
+                />
               </div>
-              <input type="email" placeholder={t('contact_email')} className="form-input" required />
-              <textarea placeholder={t('contact_write')} className="form-textarea h-44 resize-none" required></textarea>
+              <input 
+                type="email" 
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder={t('contact_email')} 
+                className="form-input" 
+                required 
+              />
+              <textarea 
+                name="message"
+                value={formData.message}
+                onChange={handleChange}
+                placeholder={t('contact_write')} 
+                className="form-textarea h-44 resize-none" 
+                required
+              ></textarea>
               <button type="submit" className="btn-send flex items-center justify-center gap-3">
                 {t('contact_btn')} <span>â†’</span>
               </button>

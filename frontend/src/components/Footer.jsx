@@ -75,7 +75,7 @@ const Footer = () => {
         <p className="footer-copyright">Â© 2026 SHOT. {t('footer_rights')}</p>
         <div className="footer-socials">
           <a href="#" title="Facebook"><Facebook size={22} /></a>
-          <a href="#" title="Instagram"><Instagram size={22} /></a>
+          <a href="https://www.instagram.com/take_s.hot/" target="_blank" rel="noopener noreferrer" title="Instagram"><Instagram size={22} /></a>
           <a href="#" title="YouTube"><Youtube size={22} /></a>
           <a href="#" title="Twitter" className="font-bold text-xl">X</a>
         </div>
