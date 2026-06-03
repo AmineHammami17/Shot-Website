@@ -79,7 +79,7 @@ exports.createOrderFromCart = async (req, res) => {
             return res.status(400).json({ success: false, message: "Votre panier est vide." });
         }
 
-        const { addressId, methodePaiement } = req.body; 
+        const { addressId, methodePaiement, promoCode } = req.body; 
         const address = await Address.findById(addressId);
         if (!address) return res.status(400).json({ success: false, message: "Adresse introuvable." });
 
@@ -120,7 +120,23 @@ exports.createOrderFromCart = async (req, res) => {
 
         const subTotal = cart.totalPrice;
         const shippingCost = 7;
-        const finalTotal = subTotal + shippingCost;
+        let discountAmount = 0;
+
+        if (promoCode) {
+            const coupon = await Coupon.findOne({ code: promoCode.toUpperCase() });
+            if (coupon && coupon.isActive && new Date() <= new Date(coupon.expiryDate)) {
+                if (coupon.discountType === 'percentage') {
+                    discountAmount = (subTotal * coupon.discountValue) / 100;
+                } else if (coupon.discountType === 'fixed') {
+                    discountAmount = coupon.discountValue;
+                }
+                if (discountAmount > subTotal) {
+                    discountAmount = subTotal;
+                }
+            }
+        }
+
+        const finalTotal = subTotal + shippingCost - discountAmount;
 
         const order = await Order.create({
             user: req.user._id,
@@ -128,6 +144,8 @@ exports.createOrderFromCart = async (req, res) => {
             adresseLivraison: addressId,
             subTotal: subTotal,
             fraisLivraison: shippingCost,
+            promoCode: promoCode || null,
+            discountAmount,
             total: finalTotal,
             methodePaiement: methodePaiement || 'cash',
             numeroDeSuivi: `SHOT-${Date.now()}`,

@@ -37,7 +37,7 @@ services:
     networks:
       - app-network
     environment:
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=shot_odoo
       - POSTGRES_PASSWORD=odoo
       - POSTGRES_USER=odoo
     volumes:
